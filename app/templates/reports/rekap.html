@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Rekap Absensi - Aplikasi Absensi{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Rekap Absensi</h3>
+</div>
+
+<!-- Rekap Harian -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Rekap Harian ({{ today.strftime('%d %B %Y') }})</h5>
+    </div>
+    <div class="card-body">
+        {% if daily_stats %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nama</th>
+                        <th>Jumlah Hadir Tepat Waktu</th>
+                        <th>Jumlah Tidak Tepat Waktu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, stats in daily_stats.items() %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ stats.present }}</td>
+                        <td>{{ stats.late }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Tidak ada data absensi harian.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Rekap Bulanan -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Rekap Bulanan ({{ start_of_month.strftime('%B %Y') }})</h5>
+    </div>
+    <div class="card-body">
+        {% if monthly_stats %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nama</th>
+                        <th>Jumlah Hadir Tepat Waktu</th>
+                        <th>Jumlah Tidak Tepat Waktu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, stats in monthly_stats.items() %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ stats.present }}</td>
+                        <td>{{ stats.late }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Tidak ada data absensi bulanan.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Rekap Tahunan -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Rekap Tahunan ({{ start_of_year.strftime('%Y') }})</h5>
+    </div>
+    <div class="card-body">
+        {% if yearly_stats %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nama</th>
+                        <th>Jumlah Hadir Tepat Waktu</th>
+                        <th>Jumlah Tidak Tepat Waktu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, stats in yearly_stats.items() %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ stats.present }}</td>
+                        <td>{{ stats.late }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Tidak ada data absensi tahunan.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Absensi - Aplikasi Absensi{% endblock %}
+
+{% block extra_css %}
+<style>
+    #scanner-container {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    #scanner-video {
+        width: 100%;
+        height: auto;
+        border: 2px solid #007bff;
+        border-radius: 8px;
+    }
+    
+    .scan-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 2px solid rgba(0, 123, 255, 0.8);
+        box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+    }
+    
+    .scan-result {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        display: none;
+    }
+    
+    .manual-input {
+        max-width: 500px;
+        margin: 20px auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 text-center">
+        <h3>Absensi Menggunakan Barcode</h3>
+        <p>Silakan arahkan kamera ke barcode atau masukkan barcode secara manual</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-body">
+                <!-- Scanner Section -->
+                <div id="scanner-container">
+                    <video id="scanner-video" autoplay playsinline></video>
+                    <div class="scan-overlay"></div>
+                </div>
+                
+                <!-- Manual Input -->
+                <div class="manual-input">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="manual-barcode" placeholder="Masukkan kode barcode secara manual">
+                        <button class="btn btn-primary" type="button" id="manual-scan-btn">Scan</button>
+                    </div>
+                </div>
+                
+                <!-- Scan Result -->
+                <div id="scan-result" class="scan-result"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h5>Riwayat Absensi Hari Ini</h5>
+            </div>
+            <div class="card-body">
+                <div id="attendance-history">
+                    <p class="text-muted">Belum ada data absensi hari ini...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Fungsi untuk mendapatkan lokasi pengguna
+    function getLocation() {
+        return new Promise((resolve, reject) => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                    },
+                    error => {
+                        console.log('Tidak dapat mendapatkan lokasi:', error.message);
+                        resolve({ latitude: null, longitude: null });
+                    }
+                );
+            } else {
+                resolve({ latitude: null, longitude: null });
+            }
+        });
+    }
+
+    // Inisialisasi scanner barcode
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inisialisasi QuaggaJS untuk scanning barcode
+        if (typeof Quagga !== 'undefined') {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner-video')
+                },
+                decoder: {
+                    readers: [
+                        "code_128_reader",
+                        "ean_reader",
+                        "ean_8_reader",
+                        "code_39_reader",
+                        "code_39_vin_reader",
+                        "codabar_reader",
+                        "upc_reader",
+                        "upc_e_reader",
+                        "i2of5_reader"
+                    ]
+                }
+            }, function(err) {
+                if (err) {
+                    console.log('Error inisialisasi scanner:', err);
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected(function(data) {
+                handleBarcodeScan(data.code);
+            });
+        }
+
+        // Handler untuk tombol scan manual
+        document.getElementById('manual-scan-btn').addEventListener('click', async function() {
+            const barcode = document.getElementById('manual-barcode').value.trim();
+            if (barcode) {
+                handleBarcodeScan(barcode);
+            }
+        });
+
+        // Fungsi untuk menangani hasil scan
+        async function handleBarcodeScan(barcode) {
+            const location = await getLocation();
+            const locationStr = location.latitude ? 
+                `${location.latitude},${location.longitude}` : 'Lokasi tidak tersedia';
+            
+            // Kirim data ke server
+            fetch('/attendance/scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `barcode=${encodeURIComponent(barcode)}&location=${encodeURIComponent(locationStr)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('scan-result');
+                if (data.success) {
+                    resultDiv.className = 'scan-result alert alert-success';
+                    resultDiv.innerHTML = `
+                        <h5>${data.message}</h5>
+                        <p><strong>Nama:</strong> ${data.person_name}</p>
+                        <p><strong>Tipe:</strong> ${data.person_type}</p>
+                        <p><strong>Jenis Absensi:</strong> ${data.attendance_type}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Waktu:</strong> ${data.time}</p>
+                        <p><strong>Lokasi:</strong> ${data.location}</p>
+                    `;
+                    resultDiv.style.display = 'block';
+                    
+                    // Update riwayat absensi
+                    updateAttendanceHistory();
+                } else {
+                    resultDiv.className = 'scan-result alert alert-danger';
+                    resultDiv.innerHTML = `<h5>Error</h5><p>${data.message}</p>`;
+                    resultDiv.style.display = 'block';
+                }
+                
+                // Kosongkan input manual
+                document.getElementById('manual-barcode').value = '';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('scan-result');
+                resultDiv.className = 'scan-result alert alert-danger';
+                resultDiv.innerHTML = '<h5>Error</h5><p>Terjadi kesalahan saat memproses absensi.</p>';
+                resultDiv.style.display = 'block';
+            });
+        }
+
+        // Fungsi untuk update riwayat absensi
+        function updateAttendanceHistory() {
+            // Dalam implementasi sebenarnya, Anda akan mengambil data dari server
+            // Untuk sementara, kita hanya menampilkan pesan
+            document.getElementById('attendance-history').innerHTML = 
+                '<p class="text-success">Data absensi berhasil diperbarui.</p>';
+        }
+    });
+</script>
+{% endblock %}

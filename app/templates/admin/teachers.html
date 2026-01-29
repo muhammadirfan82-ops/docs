@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Data Guru - Aplikasi Absensi{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Data Guru</h3>
+    <a href="{{ url_for('admin.create_teacher') }}" class="btn btn-primary">Tambah Guru</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>No</th>
+                <th>NIP</th>
+                <th>Nama</th>
+                <th>Telepon</th>
+                <th>Email</th>
+                <th>Barcode</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for teacher in teachers %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ teacher.nip }}</td>
+                <td>{{ teacher.name }}</td>
+                <td>{{ teacher.phone or '-' }}</td>
+                <td>{{ teacher.email or '-' }}</td>
+                <td>{{ teacher.barcode }}</td>
+                <td>
+                    <a href="{{ url_for('admin.generate_barcode', barcode_type='teacher', id=teacher.id) }}" class="btn btn-sm btn-success" title="Cetak Barcode">
+                        <i class="bi bi-qr-code"></i>
+                    </a>
+                    <a href="{{ url_for('admin.edit_teacher', id=teacher.id) }}" class="btn btn-sm btn-warning" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{{ url_for('admin.delete_teacher', id=teacher.id) }}" class="btn btn-sm btn-danger" title="Hapus" onclick="return confirm('Yakin ingin menghapus guru ini?')">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
